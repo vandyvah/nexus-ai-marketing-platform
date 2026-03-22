@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
-import { Zap, Brain, Target, TrendingUp, Calendar, BarChart3, Search, Users, MessageSquare, Globe, Sparkles, ChevronRight, Play, Pause, Check, AlertTriangle, ArrowUp, ArrowDown, Clock, Eye, Heart, Share2, MousePointer, DollarSign, Layers, RefreshCw, Send, FileText, Image, Video, Mic, Hash, AtSign, Link, Settings, Bell, Filter, Download, PlusCircle, X, ChevronDown, Activity, Cpu, Database, Workflow, Bot, Rocket, Shield, Award, Coffee, Copy, Wand2, Trophy, Crosshair } from "lucide-react";
+import { Zap, Brain, Target, TrendingUp, Calendar, BarChart3, Search, Users, MessageSquare, Globe, Sparkles, ChevronRight, Play, Pause, Check, AlertTriangle, ArrowUp, ArrowDown, Clock, Eye, Heart, Share2, MousePointer, DollarSign, Layers, RefreshCw, Send, FileText, Image, Video, Mic, Hash, AtSign, Link, Settings, Bell, Filter, Download, PlusCircle, X, ChevronDown, Activity, Cpu, Database, Workflow, Bot, Rocket, Shield, Award, Coffee, Copy, Wand2, Trophy, Crosshair, Mail, Phone, Building, Star, UserPlus, ClipboardList, ExternalLink, Inbox } from "lucide-react";
 
 // ═══ Color Palette ═══
 const C = {
@@ -244,12 +244,28 @@ export default function NexusAI() {
   const [testForm, setTestForm] = useState({ name: "", variant_a: "", variant_b: "" });
   const [audienceForm, setAudienceForm] = useState({ name: "", size: "", conversion: "", value: "" });
 
+  // ─── Leads Management ───
+  const [leads, setLeads] = useState([]);
+  const [leadForms, setLeadForms] = useState([]);
+  const [showNewLead, setShowNewLead] = useState(false);
+  const [showNewLeadForm, setShowNewLeadForm] = useState(false);
+  const [showLeadDetail, setShowLeadDetail] = useState(null);
+  const [leadForm, setLeadForm] = useState({ name: "", email: "", company: "", phone: "", source: "website", status: "new", score: "", notes: "" });
+  const [leadFormBuilder, setLeadFormBuilder] = useState({ name: "", fields: ["name", "email", "company"], buttonText: "Get Started", heading: "Start Your Free Trial", description: "Fill in your details and we'll get you set up." });
+  const [leadFilter, setLeadFilter] = useState("all");
+
   // ─── Computed Stats ───
   const totalBudget = campaigns.reduce((s, c) => s + c.budget, 0);
   const totalSpent = campaigns.reduce((s, c) => s + c.spent, 0);
   const totalLeads = campaigns.reduce((s, c) => s + c.leads, 0);
   const avgCpl = totalLeads > 0 ? (totalSpent / totalLeads) : 0;
   const activeAgents = aiAgents.filter(a => a.status === "active").length;
+
+  // ─── Leads Computed Stats ───
+  const totalLeadsCount = leads.length;
+  const hotLeads = leads.filter(l => l.score >= 80).length;
+  const newLeadsToday = leads.filter(l => l.addedDate === new Date().toLocaleDateString()).length;
+  const conversionRate = leads.length > 0 ? ((leads.filter(l => l.status === "won").length / leads.length) * 100).toFixed(1) : "0.0";
 
   // ─── Create Handlers ───
   const createCampaign = () => {
@@ -328,6 +344,48 @@ export default function NexusAI() {
     setShowNewAudience(false);
   };
 
+  const createLead = () => {
+    if (!leadForm.name || !leadForm.email) return;
+    setLeads(prev => [...prev, {
+      id: Date.now(),
+      name: leadForm.name,
+      email: leadForm.email,
+      company: leadForm.company,
+      phone: leadForm.phone,
+      source: leadForm.source,
+      status: leadForm.status,
+      score: parseInt(leadForm.score) || 50,
+      notes: leadForm.notes,
+      addedDate: new Date().toLocaleDateString(),
+      lastContact: new Date().toLocaleDateString(),
+      tags: [leadForm.source],
+    }]);
+    setLeadForm({ name: "", email: "", company: "", phone: "", source: "website", status: "new", score: "", notes: "" });
+    setShowNewLead(false);
+  };
+
+  const createLeadForm = () => {
+    if (!leadFormBuilder.name) return;
+    setLeadForms(prev => [...prev, {
+      id: Date.now(),
+      name: leadFormBuilder.name,
+      fields: leadFormBuilder.fields,
+      buttonText: leadFormBuilder.buttonText,
+      heading: leadFormBuilder.heading,
+      description: leadFormBuilder.description,
+      submissions: 0,
+      conversions: 0,
+      status: "active",
+      createdDate: new Date().toLocaleDateString(),
+    }]);
+    setLeadFormBuilder({ name: "", fields: ["name", "email", "company"], buttonText: "Get Started", heading: "Start Your Free Trial", description: "Fill in your details and we'll get you set up." });
+    setShowNewLeadForm(false);
+  };
+
+  const updateLeadStatus = (leadId, newStatus) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
+  };
+
   const tabs = [
     { id: "dashboard", label: "Command Center", icon: Activity },
     { id: "agents", label: "AI Agents", icon: Bot },
@@ -337,6 +395,8 @@ export default function NexusAI() {
     { id: "analytics", label: "Deep Analytics", icon: BarChart3 },
     { id: "abtests", label: "A/B Testing", icon: Layers },
     { id: "audiences", label: "Audiences", icon: Users },
+    { id: "leads", label: "Leads CRM", icon: UserPlus },
+    { id: "leadforms", label: "Capture Forms", icon: ClipboardList },
   ];
 
   return (
@@ -366,6 +426,9 @@ export default function NexusAI() {
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 8, background: C.card, fontSize: 12, color: C.textMuted }}>
             <Target size={13} color={C.accent} /> {campaigns.length} Campaigns
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 8, background: C.card, fontSize: 12, color: C.textMuted }}>
+            <UserPlus size={13} color={C.green} /> {leads.length} Leads
           </div>
           <button onClick={() => setChatOpen(!chatOpen)} style={{ ...sButton(true), padding: "8px 16px" }}>
             <Brain size={15} /> AI Command
@@ -400,7 +463,7 @@ export default function NexusAI() {
               <Metric icon={Target} label="Active Campaigns" value={campaigns.length} color={C.accent} />
               <Metric icon={FileText} label="Content Items" value={contentPipeline.length} color={C.green} />
               <Metric icon={Search} label="Tracked Keywords" value={seoKeywords.length} color={C.pink} />
-              <Metric icon={Users} label="Audience Segments" value={audienceSegments.length} color={C.orange} />
+              <Metric icon={UserPlus} label="Total Leads" value={leads.length} color={C.orange} />
             </div>
 
             {campaigns.length > 0 ? (
@@ -739,6 +802,135 @@ export default function NexusAI() {
             )}
           </div>
         )}
+
+        {/* ═══ LEADS CRM ═══ */}
+        {activeTab === "leads" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24, animation: "slideUp 0.4s ease" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+              <Metric icon={UserPlus} label="Total Leads" value={totalLeadsCount} color={C.accent} />
+              <Metric icon={Star} label="Hot Leads" value={hotLeads} color={C.green} />
+              <Metric icon={Clock} label="New Today" value={newLeadsToday} color={C.orange} />
+              <Metric icon={Trophy} label="Win Rate" value={`${conversionRate}%`} color={C.pink} />
+            </div>
+
+            {leads.length > 0 ? (
+              <>
+                <div style={{ ...sCard, display: "flex", gap: 8, alignItems: "center", padding: "12px 16px" }}>
+                  <button onClick={() => setLeadFilter("all")} style={{ ...sButton(leadFilter === "all"), padding: "6px 14px", fontSize: 12 }}>All</button>
+                  <button onClick={() => setLeadFilter("new")} style={{ ...sButton(leadFilter === "new"), padding: "6px 14px", fontSize: 12 }}>New</button>
+                  <button onClick={() => setLeadFilter("contacted")} style={{ ...sButton(leadFilter === "contacted"), padding: "6px 14px", fontSize: 12 }}>Contacted</button>
+                  <button onClick={() => setLeadFilter("qualified")} style={{ ...sButton(leadFilter === "qualified"), padding: "6px 14px", fontSize: 12 }}>Qualified</button>
+                  <button onClick={() => setLeadFilter("proposal")} style={{ ...sButton(leadFilter === "proposal"), padding: "6px 14px", fontSize: 12 }}>Proposal</button>
+                  <button onClick={() => setLeadFilter("won")} style={{ ...sButton(leadFilter === "won"), padding: "6px 14px", fontSize: 12 }}>Won</button>
+                  <button onClick={() => setLeadFilter("lost")} style={{ ...sButton(leadFilter === "lost"), padding: "6px 14px", fontSize: 12 }}>Lost</button>
+                </div>
+
+                <div style={sCard}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700 }}>Lead Pipeline</div>
+                    <button onClick={() => setShowNewLead(true)} style={sButton(true)}><PlusCircle size={14} /> Add Lead</button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr 1.2fr 1.2fr 1fr 1.2fr 1.5fr", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.textMuted, fontWeight: 600 }}>
+                    <div>SCORE</div><div>NAME</div><div>COMPANY</div><div>EMAIL</div><div>SOURCE</div><div>STATUS</div><div>ACTIONS</div>
+                  </div>
+                  {leads.filter(l => leadFilter === "all" || l.status === leadFilter).map(lead => (
+                    <div key={lead.id} style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr 1.2fr 1.2fr 1fr 1.2fr 1.5fr", gap: 12, padding: "14px 0", borderBottom: `1px solid ${C.border}22`, alignItems: "center", fontSize: 13 }}>
+                      <div style={{ ...sBadge(lead.score >= 80 ? C.green : lead.score >= 50 ? C.orange : C.red), justifyContent: "center" }}>{lead.score}</div>
+                      <div style={{ fontWeight: 600 }}>{lead.name}</div>
+                      <div style={{ color: C.textMuted }}>{lead.company || "—"}</div>
+                      <div style={{ color: C.textMuted, fontSize: 12 }}>{lead.email}</div>
+                      <div style={sBadge(C.blue)}>{lead.source}</div>
+                      <div style={sBadge(
+                        lead.status === "new" ? "#74b9ff" :
+                        lead.status === "contacted" ? "#fdcb6e" :
+                        lead.status === "qualified" ? C.accent :
+                        lead.status === "proposal" ? C.pink :
+                        lead.status === "won" ? C.green :
+                        lead.status === "lost" ? C.red : C.textMuted
+                      )}>{lead.status}</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => setShowLeadDetail(lead)} style={{ ...sButton(false), padding: "4px 10px", fontSize: 11 }}><Eye size={12} /></button>
+                        <select value={lead.status} onChange={e => updateLeadStatus(lead.id, e.target.value)} style={{ ...sSelect, padding: "4px 8px", fontSize: 11 }}>
+                          <option value="new">New</option>
+                          <option value="contacted">Contacted</option>
+                          <option value="qualified">Qualified</option>
+                          <option value="proposal">Proposal</option>
+                          <option value="won">Won</option>
+                          <option value="lost">Lost</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <EmptyState
+                icon={UserPlus}
+                title="No Leads Yet"
+                subtitle="Start building your B2B lead pipeline. Add leads manually or connect your capture forms to automatically populate this list."
+                buttonLabel="Add First Lead"
+                onAction={() => setShowNewLead(true)}
+                color={C.green}
+              />
+            )}
+          </div>
+        )}
+
+        {/* ═══ LEAD CAPTURE FORMS ═══ */}
+        {activeTab === "leadforms" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24, animation: "slideUp 0.4s ease" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div><div style={{ fontSize: 22, fontWeight: 800 }}>Lead Capture Forms</div><div style={{ fontSize: 13, color: C.textMuted }}>Embed forms on your website to capture leads</div></div>
+              <button onClick={() => setShowNewLeadForm(true)} style={sButton(true)}><PlusCircle size={14} /> Create New Form</button>
+            </div>
+
+            {leadForms.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                {leadForms.map(form => (
+                  <div key={form.id} style={sCard}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                      <div><div style={{ fontSize: 15, fontWeight: 700 }}>{form.name}</div></div>
+                      <span style={sBadge(form.status === "active" ? C.green : C.orange)}>{form.status === "active" ? "Active" : "Paused"}</span>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                      <div style={{ padding: 10, borderRadius: 8, background: C.bg }}>
+                        <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 4 }}>Submissions</div>
+                        <div style={{ fontSize: 18, fontWeight: 800 }}>{form.submissions}</div>
+                      </div>
+                      <div style={{ padding: 10, borderRadius: 8, background: C.bg }}>
+                        <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 4 }}>Conversion</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: C.green }}>{form.conversions}%</div>
+                      </div>
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 10, background: C.bg, marginBottom: 14 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{form.heading}</div>
+                      <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 10 }}>{form.description}</div>
+                      {form.fields.map(f => (
+                        <div key={f} style={{ padding: "8px 12px", borderRadius: 6, background: C.card, marginBottom: 6, fontSize: 11, color: C.textMuted }}>
+                          {f.charAt(0).toUpperCase() + f.slice(1)}...
+                        </div>
+                      ))}
+                      <button style={{ ...sButton(true), width: "100%", justifyContent: "center", marginTop: 8, fontSize: 12 }}>{form.buttonText}</button>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => alert("Embed code:\n<iframe src='https://nexus.ai/form/" + form.id + "' width='100%' height='500'></iframe>")} style={{ ...sButton(false), flex: 1, justifyContent: "center", fontSize: 12 }}><Copy size={12} /> Copy Embed</button>
+                      <button style={{ ...sButton(false), justifyContent: "center", fontSize: 12 }}>{form.status === "active" ? <Pause size={12} /> : <Play size={12} />}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={ClipboardList}
+                title="No Capture Forms"
+                subtitle="Create lead capture forms to embed on your website. Automatically qualify and score leads as they submit the form."
+                buttonLabel="Create First Form"
+                onAction={() => setShowNewLeadForm(true)}
+                color={C.accent}
+              />
+            )}
+          </div>
+        )}
       </main>
 
       {/* ═══ MODALS ═══ */}
@@ -893,6 +1085,183 @@ export default function NexusAI() {
             <Users size={15} /> Create Segment
           </button>
         </div>
+      </Modal>
+
+      {/* New Lead Modal */}
+      <Modal open={showNewLead} onClose={() => setShowNewLead(false)} title="Add New Lead">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Full Name *</label>
+            <input value={leadForm.name} onChange={e => setLeadForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Sarah Johnson" style={sInput} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Email *</label>
+            <input type="email" value={leadForm.email} onChange={e => setLeadForm(p => ({ ...p, email: e.target.value }))} placeholder="e.g. sarah@company.com" style={sInput} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Company</label>
+              <input value={leadForm.company} onChange={e => setLeadForm(p => ({ ...p, company: e.target.value }))} placeholder="e.g. Acme Corp" style={sInput} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Phone</label>
+              <input type="tel" value={leadForm.phone} onChange={e => setLeadForm(p => ({ ...p, phone: e.target.value }))} placeholder="e.g. +1 (555) 123-4567" style={sInput} />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Source</label>
+              <select value={leadForm.source} onChange={e => setLeadForm(p => ({ ...p, source: e.target.value }))} style={sSelect}>
+                <option value="website">Website</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="referral">Referral</option>
+                <option value="cold_outreach">Cold Outreach</option>
+                <option value="paid_ads">Paid Ads</option>
+                <option value="conference">Conference</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Status</label>
+              <select value={leadForm.status} onChange={e => setLeadForm(p => ({ ...p, status: e.target.value }))} style={sSelect}>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="qualified">Qualified</option>
+                <option value="proposal">Proposal</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Lead Score (0-100)</label>
+            <input type="number" min="0" max="100" value={leadForm.score} onChange={e => setLeadForm(p => ({ ...p, score: e.target.value }))} placeholder="e.g. 75" style={sInput} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Notes</label>
+            <textarea value={leadForm.notes} onChange={e => setLeadForm(p => ({ ...p, notes: e.target.value }))} placeholder="Additional notes about this lead..." style={{ ...sInput, minHeight: 80, fontFamily: "inherit" }} />
+          </div>
+          <button onClick={createLead} style={{ ...sButton(true), justifyContent: "center", marginTop: 8 }}>
+            <UserPlus size={15} /> Add Lead
+          </button>
+        </div>
+      </Modal>
+
+      {/* New Lead Form Modal */}
+      <Modal open={showNewLeadForm} onClose={() => setShowNewLeadForm(false)} title="Create Lead Capture Form">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Form Name *</label>
+            <input value={leadFormBuilder.name} onChange={e => setLeadFormBuilder(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Product Demo Signup" style={sInput} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Heading</label>
+            <input value={leadFormBuilder.heading} onChange={e => setLeadFormBuilder(p => ({ ...p, heading: e.target.value }))} placeholder="e.g. Start Your Free Trial" style={sInput} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Description</label>
+            <textarea value={leadFormBuilder.description} onChange={e => setLeadFormBuilder(p => ({ ...p, description: e.target.value }))} placeholder="e.g. Fill in your details and we'll get you set up." style={{ ...sInput, minHeight: 70, fontFamily: "inherit" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Form Fields</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {["name", "email", "company", "phone", "job_title", "company_size"].map(f => (
+                <label key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                  <input type="checkbox" checked={leadFormBuilder.fields.includes(f)} onChange={e => {
+                    if (e.target.checked) {
+                      setLeadFormBuilder(p => ({ ...p, fields: [...p.fields, f] }));
+                    } else {
+                      setLeadFormBuilder(p => ({ ...p, fields: p.fields.filter(x => x !== f) }));
+                    }
+                  }} style={{ cursor: "pointer" }} />
+                  {f.charAt(0).toUpperCase() + f.slice(1).replace("_", " ")}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, display: "block" }}>Button Text</label>
+            <input value={leadFormBuilder.buttonText} onChange={e => setLeadFormBuilder(p => ({ ...p, buttonText: e.target.value }))} placeholder="e.g. Get Started" style={sInput} />
+          </div>
+          <button onClick={createLeadForm} style={{ ...sButton(true), justifyContent: "center", marginTop: 8 }}>
+            <ClipboardList size={15} /> Create Form
+          </button>
+        </div>
+      </Modal>
+
+      {/* Lead Detail Modal */}
+      <Modal open={showLeadDetail !== null} onClose={() => setShowLeadDetail(null)} title={showLeadDetail ? "Lead Details" : ""}>
+        {showLeadDetail && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>NAME</div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>{showLeadDetail.name}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>COMPANY</div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>{showLeadDetail.company || "—"}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>EMAIL</div>
+                <div style={{ fontSize: 13, color: C.text }}>{showLeadDetail.email}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>PHONE</div>
+                <div style={{ fontSize: 13, color: C.text }}>{showLeadDetail.phone || "—"}</div>
+              </div>
+            </div>
+
+            <div style={{ padding: 14, borderRadius: 10, background: C.bg }}>
+              <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>LEAD SCORE</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ height: 8, borderRadius: 4, background: C.border }}>
+                    <div style={{ width: `${showLeadDetail.score}%`, height: "100%", borderRadius: 4, background: showLeadDetail.score >= 80 ? C.green : showLeadDetail.score >= 50 ? C.orange : C.red }} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: showLeadDetail.score >= 80 ? C.green : showLeadDetail.score >= 50 ? C.orange : C.red }}>{showLeadDetail.score}</div>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8, fontWeight: 600 }}>STATUS PIPELINE</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {["new", "contacted", "qualified", "proposal", "won", "lost"].map(s => (
+                  <button key={s} onClick={() => updateLeadStatus(showLeadDetail.id, s)} style={{
+                    ...sButton(showLeadDetail.status === s),
+                    padding: "6px 12px",
+                    fontSize: 11,
+                    background: showLeadDetail.status === s ? (
+                      s === "new" ? "#74b9ff" :
+                      s === "contacted" ? "#fdcb6e" :
+                      s === "qualified" ? C.accent :
+                      s === "proposal" ? C.pink :
+                      s === "won" ? C.green : C.red
+                    ) : "transparent",
+                    color: showLeadDetail.status === s ? "#fff" : C.textMuted,
+                  }}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>SOURCE</div>
+                <div style={sBadge(C.blue)}>{showLeadDetail.source}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>ADDED DATE</div>
+                <div style={{ fontSize: 13 }}>{showLeadDetail.addedDate}</div>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>NOTES</div>
+              <div style={{ padding: 10, borderRadius: 8, background: C.bg, fontSize: 13, color: C.text, minHeight: 60, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{showLeadDetail.notes || "(No notes)"}</div>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* ═══ AI Chat Floating Button ═══ */}
